@@ -10,6 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { AuthPayloadDto } from 'src/dtos/auth/AuthPayloadDto';
+import { Response } from 'express';
 
 @Injectable()
 export class AuthService {
@@ -18,7 +19,7 @@ export class AuthService {
     @InjectRepository(User) private _userRepository: Repository<User>,
   ) {}
 
-  async signIn(authPayloadDto: AuthPayloadDto) {
+  async signIn(authPayloadDto: AuthPayloadDto, res: Response) {
     const user = await this._userRepository.findOneBy({
       email: authPayloadDto.email,
     });
@@ -37,9 +38,30 @@ export class AuthService {
 
       const tokens = await this.getTokens(user.id, user.email);
       await this.updateRefreshToken(user.id, tokens.refreshToken);
+      console.log('token');
 
-      return tokens;
+      this.setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
+
+      return { message: 'Login Sucessfully.', data: tokens };
     }
+  }
+
+  async refreshTokens(refreshToken: string, res: Response) {
+    const decoded = await this.jwtService.verifyAsync(refreshToken, {
+      secret: process.env.JWT_REFRESH_SECRET || 'JWT_REFRESH_SECRET',
+    });
+
+    const user = await this._userRepository.findOneBy({ id: decoded.sub });
+    if (!user || !(await bcrypt.compare(refreshToken, user.refreshToken))) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    const tokens = await this.getTokens(user.id, user.email);
+    await this.updateRefreshToken(user.id, tokens.refreshToken);
+
+    this.setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
+
+    return { message: 'Tokens refreshed', data: tokens };
   }
 
   private async getTokens(userId: number, email: string) {
@@ -50,7 +72,7 @@ export class AuthService {
           email,
         },
         {
-          secret: 'JWT_ACCESS_SECRET',
+          secret: process.env.JWT_ACCESS_SECRET || 'JWT_ACCESS_SECRET',
           expiresIn: '15m',
         },
       ),
@@ -60,7 +82,7 @@ export class AuthService {
           email,
         },
         {
-          secret: 'JWT_REFRESH_SECRET',
+          secret: process.env.JWT_REFRESH_SECRET || 'JWT_REFRESH_SECRET',
           expiresIn: '7d',
         },
       ),
@@ -81,5 +103,21 @@ export class AuthService {
         refreshToken: hashedRefreshToken,
       },
     );
+  }
+
+  private setAuthCookies(
+    res: Response,
+    accessToken: string,
+    refreshToken: string,
+  ) {
+    res.cookie('access_token', accessToken, {
+      httpOnly: true,
+      secure: true,
+    });
+
+    res.cookie('refresh_token', refreshToken, {
+      httpOnly: true,
+      secure: true,
+    });
   }
 }
