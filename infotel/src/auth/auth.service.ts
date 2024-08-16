@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -19,7 +20,7 @@ export class AuthService {
     @InjectRepository(User) private _userRepository: Repository<User>,
   ) {}
 
-  async signIn(authPayloadDto: AuthPayloadDto, res: Response) {
+  async signIn(authPayloadDto: AuthPayloadDto) {
     const user = await this._userRepository.findOneBy({
       email: authPayloadDto.email,
     });
@@ -38,30 +39,27 @@ export class AuthService {
 
       const tokens = await this.getTokens(user.id, user.email);
       await this.updateRefreshToken(user.id, tokens.refreshToken);
-      console.log('token');
 
-      this.setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
-
-      return { message: 'Login Sucessfully.', data: tokens };
+      return tokens;
     }
   }
 
-  async refreshTokens(refreshToken: string, res: Response) {
-    const decoded = await this.jwtService.verifyAsync(refreshToken, {
-      secret: process.env.JWT_REFRESH_SECRET || 'JWT_REFRESH_SECRET',
-    });
+  async logout(userId: number) {
+    return this._userRepository.update({ id: userId }, { refreshToken: null });
+  }
 
-    const user = await this._userRepository.findOneBy({ id: decoded.sub });
-    if (!user || !(await bcrypt.compare(refreshToken, user.refreshToken))) {
-      throw new UnauthorizedException('Invalid refresh token');
+  async refreshTokens(userId: number, refreshToken: string) {
+    const user = await this._userRepository.findOneBy({ id: userId });
+    const matched = await bcrypt.compare(refreshToken, user.refreshToken);
+
+    if (!user || !user.refreshToken || !matched) {
+      throw new ForbiddenException('Access Denied');
     }
 
-    const tokens = await this.getTokens(user.id, user.email);
-    await this.updateRefreshToken(user.id, tokens.refreshToken);
+    const newTokens = await this.getTokens(user.id, user.email);
+    await this.updateRefreshToken(user.id, newTokens.refreshToken);
 
-    this.setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
-
-    return { message: 'Tokens refreshed', data: tokens };
+    return newTokens;
   }
 
   private async getTokens(userId: number, email: string) {
@@ -103,21 +101,5 @@ export class AuthService {
         refreshToken: hashedRefreshToken,
       },
     );
-  }
-
-  private setAuthCookies(
-    res: Response,
-    accessToken: string,
-    refreshToken: string,
-  ) {
-    res.cookie('access_token', accessToken, {
-      httpOnly: true,
-      secure: true,
-    });
-
-    res.cookie('refresh_token', refreshToken, {
-      httpOnly: true,
-      secure: true,
-    });
   }
 }

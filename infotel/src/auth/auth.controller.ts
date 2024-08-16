@@ -1,16 +1,19 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Post,
   Req,
   Res,
-  UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthPayloadDto } from 'src/dtos/auth/AuthPayloadDto';
 import { Response, Request } from 'express';
+import { AccessTokenGuard } from 'src/common/guards/accessToken.guard';
+import { RefreshTokenGuard } from 'src/common/guards/refreshToken.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -20,17 +23,61 @@ export class AuthController {
   @Post('login')
   async signIn(@Res() res: Response, @Body() authDto: AuthPayloadDto) {
     const result = await this.authService.signIn(authDto, res);
-    return res.status(200).json(result);
+
+    res.cookie('access_token', result.accessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+    res.cookie('refresh_token', result.refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    return res
+      .status(HttpStatus.OK)
+      .json({ message: 'Login successfull', data: result });
   }
 
-  @Post('refresh')
-  async refresh(@Req() req: Request, @Res() res: Response) {
-    const refreshToken = req.cookies['refresh_token'];
-    if (!refreshToken) {
-      throw new UnauthorizedException('No refresh token provided');
-    }
+  @UseGuards(AccessTokenGuard)
+  @Get('logout')
+  logout(@Req() req: Request, @Res() res: Response) {
+    res.clearCookie('access_token');
+    res.clearCookie('refresh_token');
+    this.authService.logout(req.user['sub']);
 
-    const result = this.authService.refreshTokens(refreshToken, res);
-    return res.status(200).json(result);
+    return res.status(HttpStatus.OK).json({ message: 'Logout successful' });
+  }
+
+  @UseGuards(RefreshTokenGuard)
+  @Get('refresh')
+  async refresh(@Req() req: Request, @Res() res: Response) {
+    const userId = req.user['sub'];
+    const refreshToken = req.user['refreshToken'];
+
+    const newTokens = await this.authService.refreshTokens(
+      userId,
+      refreshToken,
+    );
+
+    res.cookie('access_token', newTokens.accessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 15 * 60 * 1000, // 15 minutes
+    });
+    res.cookie('refresh_token', newTokens.refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    return res
+      .status(HttpStatus.OK)
+      .json({ message: 'Tokens refreshed', data: newTokens });
   }
 }
