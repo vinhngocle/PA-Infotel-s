@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Get,
-  HttpCode,
   HttpStatus,
   Post,
   Req,
@@ -14,27 +13,30 @@ import { AuthPayloadDto } from 'src/dtos/auth/AuthPayloadDto';
 import { Response, Request } from 'express';
 import { AccessTokenGuard } from 'src/common/guards/accessToken.guard';
 import { RefreshTokenGuard } from 'src/common/guards/refreshToken.guard';
+import { GoogleGuard } from 'src/common/guards/google.guard';
+
+const TIME_ACCESS_TOKEN = 15 * 60 * 1000; // 15 minutes
+const TIME_REFRESH_TOKEN = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  @HttpCode(HttpStatus.OK)
   @Post('login')
-  async signIn(@Res() res: Response, @Body() authDto: AuthPayloadDto) {
-    const result = await this.authService.signIn(authDto, res);
+  async signIn(@Body() authDto: AuthPayloadDto, @Res() res: Response) {
+    const result = await this.authService.signIn(authDto);
 
     res.cookie('access_token', result.accessToken, {
       httpOnly: true,
       secure: true,
       sameSite: 'strict',
-      maxAge: 15 * 60 * 1000, // 15 minutes
+      maxAge: TIME_ACCESS_TOKEN,
     });
     res.cookie('refresh_token', result.refreshToken, {
       httpOnly: true,
       secure: true,
       sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: TIME_REFRESH_TOKEN,
     });
 
     return res
@@ -67,17 +69,29 @@ export class AuthController {
       httpOnly: true,
       secure: true,
       sameSite: 'strict',
-      maxAge: 15 * 60 * 1000, // 15 minutes
+      maxAge: TIME_ACCESS_TOKEN,
     });
     res.cookie('refresh_token', newTokens.refreshToken, {
       httpOnly: true,
       secure: true,
       sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: TIME_REFRESH_TOKEN,
     });
 
     return res
       .status(HttpStatus.OK)
       .json({ message: 'Tokens refreshed', data: newTokens });
+  }
+
+  @UseGuards(GoogleGuard)
+  @Get('google/login')
+  googleLogin() {
+    return { message: 'Google Authentication' };
+  }
+
+  @UseGuards(GoogleGuard)
+  @Get('google/redirect')
+  googleRedirect(@Req() req: Request) {
+    return { message: 'Google login suceesfull.', data: req.user };
   }
 }

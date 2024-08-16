@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { UserModule } from './users/users.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entity/user.entity';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
@@ -18,6 +19,10 @@ import { User } from './entity/user.entity';
       // entities: [__dirname + '../**/*.{.ts,.js}'],
       entities: [User],
       synchronize: true,
+    }),
+    ConfigModule.forRoot({
+      envFilePath: ['.env', '.env.local'],
+      isGlobal: true,
     }),
     AuthModule,
     UserModule,

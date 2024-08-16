@@ -11,7 +11,6 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { AuthPayloadDto } from 'src/dtos/auth/AuthPayloadDto';
-import { Response } from 'express';
 
 @Injectable()
 export class AuthService {
@@ -60,6 +59,10 @@ export class AuthService {
     await this.updateRefreshToken(user.id, newTokens.refreshToken);
 
     return newTokens;
+  }
+
+  async getUserById(id: number) {
+    return await this._userRepository.findOneBy({ id });
   }
 
   private async getTokens(userId: number, email: string) {
