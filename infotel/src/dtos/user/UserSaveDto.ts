@@ -3,7 +3,7 @@ import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 
 export class UserSaveDto {
   @ApiProperty({
-    example: 'name@gmail.com',
+    example: 'example@gmail.com',
   })
   @IsEmail()
   @IsNotEmpty()

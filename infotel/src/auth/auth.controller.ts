@@ -98,7 +98,7 @@ export class AuthController {
 
   @UseGuards(GoogleGuard)
   @Get('google/redirect')
-  @ApiOperation({ summary: 'Google Redirect' })
+  @ApiOperation({ summary: 'Google Callback' })
   googleRedirect(@Req() req: Request) {
     return { message: 'Google login successfull.', data: req.user };
   }

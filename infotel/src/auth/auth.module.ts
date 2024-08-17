@@ -10,6 +10,7 @@ import { ConfigModule } from '@nestjs/config';
 import { GoogleStrategy } from 'src/strategies/google.strategy';
 import { PassportModule } from '@nestjs/passport';
 import { SessionSerializer } from 'src/strategies/Serializer';
+import { UsersService } from 'src/users/users.service';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { SessionSerializer } from 'src/strategies/Serializer';
   controllers: [AuthController],
   providers: [
     AuthService,
+    UsersService,
     AccessTokenStrategy,
     RefreshTokenStrategy,
     SessionSerializer,

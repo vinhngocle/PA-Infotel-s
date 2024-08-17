@@ -13,7 +13,7 @@ export class UserController {
   @ApiOperation({ summary: 'Create new user' })
   async createUser(@Body() userSaveDto: UserSaveDto, @Res() res: Response) {
     const result = await this.userService.create(userSaveDto);
-    return res.status(HttpStatus.OK).json({
+    return res.status(HttpStatus.CREATED).json({
       message: 'Create successfull',
       data: result,
     });

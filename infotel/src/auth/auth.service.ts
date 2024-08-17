@@ -11,36 +11,34 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { AuthPayloadDto } from 'src/dtos/auth/AuthPayloadDto';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private jwtService: JwtService,
+    private usersService: UsersService,
     @InjectRepository(User) private _userRepository: Repository<User>,
   ) {}
 
   async signIn(authPayloadDto: AuthPayloadDto) {
-    const user = await this._userRepository.findOneBy({
-      email: authPayloadDto.email,
-    });
+    const user = await this.usersService.getUserByEmail(authPayloadDto.email);
     if (!user) {
       throw new HttpException('User not found.', HttpStatus.BAD_REQUEST);
     }
 
-    if (user) {
-      const isMatch = await bcrypt.compare(
-        authPayloadDto.password,
-        user.password,
-      );
-      if (!isMatch) {
-        throw new UnauthorizedException();
-      }
-
-      const tokens = await this.getTokens(user.id, user.email);
-      await this.updateRefreshToken(user.id, tokens.refreshToken);
-
-      return tokens;
+    const isMatch = await bcrypt.compare(
+      authPayloadDto.password,
+      user.password,
+    );
+    if (!isMatch) {
+      throw new UnauthorizedException();
     }
+
+    const tokens = await this.getTokens(user.id, user.email);
+    await this.updateRefreshToken(user.id, tokens.refreshToken);
+
+    return tokens;
   }
 
   async logout(userId: number) {
