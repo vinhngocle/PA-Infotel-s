@@ -6,6 +6,16 @@
 - Authentication Libraries: passport, passwort jwt, passport google oauth20
 - Environment Variables: .env
 
+## Build Setup
+
+- node: v20.13.1
+- npm: v10.5.2
+- mysql: v8.4
+
+- run project:
+  - yarn install
+  - yarn start:dev
+
 # 1. Authentication Flow
 
 # a. Basic Auth (email + password):
