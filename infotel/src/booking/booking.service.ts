@@ -1,19 +1,27 @@
-import { Injectable } from '@nestjs/common';
-import { readFileSync } from 'fs';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
+import { BookingDto } from 'src/dtos/booking/BookingDto';
 import * as xml2js from 'xml2js';
 
 @Injectable()
 export class BookingService {
-  async convertXmlToJson(confirmationNo: string): Promise<any> {
-    const fileName = `booking_${confirmationNo}`;
+  async convertXmlToJson(bookingDto: BookingDto) {
+    const fileName = `booking_${bookingDto.confirmation_no}`;
     const filePath = join(`src/XML/${fileName}.xml`);
+    if (!existsSync(filePath)) {
+      throw new HttpException(
+        'Confirmation no not found.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     const xmlData = readFileSync(filePath, 'utf8');
     const parser = new xml2js.Parser();
 
     const jsonData = await parser.parseStringPromise(xmlData);
 
-    return this.formatJsonData(jsonData);
+    return await this.formatJsonData(jsonData);
   }
 
   private formatJsonData(jsonData: any): any {

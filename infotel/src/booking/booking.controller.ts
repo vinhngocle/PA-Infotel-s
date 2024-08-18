@@ -1,7 +1,8 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { AccessTokenGuard } from 'src/common/guards/accessToken.guard';
 import { BookingService } from './booking.service';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { BookingDto } from 'src/dtos/booking/BookingDto';
 
 @ApiBearerAuth()
 @ApiTags('booking')
@@ -12,7 +13,7 @@ export class BookingController {
   @UseGuards(AccessTokenGuard)
   @Get(':confirmation_no')
   @ApiOperation({ summary: 'Convert booking xml to json use third-party' })
-  async xmlToJson(@Param('confirmation_no') confirmationNo: string) {
-    return await this.bookingService.convertXmlToJson(confirmationNo);
+  async xmlToJson(@Param() bookingDto: BookingDto) {
+    return await this.bookingService.convertXmlToJson(bookingDto);
   }
 }
