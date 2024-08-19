@@ -16,4 +16,11 @@ export class BookingController {
   async xmlToJson(@Param() bookingDto: BookingDto) {
     return await this.bookingService.convertXmlToJson(bookingDto);
   }
+
+  @UseGuards(AccessTokenGuard)
+  @Get('s2/:confirmation_no')
+  @ApiOperation({ summary: 'Convert booking xml to json not use third-party' })
+  async xmlToJsonS2(@Param() bookingDto: BookingDto) {
+    return await this.bookingService.convertXmlToJsonS2(bookingDto);
+  }
 }
